@@ -58,17 +58,19 @@ pub enum Side {
     Front,
 }
 
+#[repr(u8)]
 pub enum PlaneType {
-    AxialX,
-    AxialY,
-    AxialZ,
-    NonAxialX,
-    NonAxialY,
-    NonAxialZ,
+    AxialX = 0,
+    AxialY = 1,
+    AxialZ = 2,
+    NonAxialX = 3,
+    NonAxialY = 4,
+    NonAxialZ = 5,
 }
 
 pub type Bounds = BoundingBox<Vec3<i16>>;
 
+// TODO: Load this lazily from the BSP
 pub struct Plane {
     pub normal: Vec3<f32>,
     pub dist: f32,
@@ -83,7 +85,10 @@ impl<'a, Src: Clone + Into<Dst>, Dst> FromBsp<'a, Src> for Dst {
 
 impl From<sys::Plane> for Plane {
     fn from(other: sys::Plane) -> Self {
-        use self::PlaneType::*;
+        use std::mem;
+
+        let plane_type = other.plane_type.native() as u8;
+        assert!(plane_type <= PlaneType::NonAxialZ as u8 && plane_type >= PlaneType::AxialX as u8);
 
         Plane {
             normal: Vec3 {
@@ -92,15 +97,7 @@ impl From<sys::Plane> for Plane {
                 z: other.normal.z.native(),
             },
             dist: other.dist.native(),
-            plane_type: match other.plane_type.native() {
-                0 => AxialX,
-                1 => AxialY,
-                2 => AxialZ,
-                3 => NonAxialX,
-                4 => NonAxialY,
-                5 => NonAxialZ,
-                _ => panic!("Invalid plane type: {}", other.plane_type),
-            },
+            plane_type: unsafe { mem::transmute(plane_type) },
         }
     }
 }
@@ -372,7 +369,7 @@ impl<'a> Branch<'a> {
     }
 }
 
-#[repr(i32)]
+#[repr(i8)]
 pub enum LeafType {
     Ordinary = -1,
     Invalid = -2,
@@ -433,12 +430,11 @@ impl<'a> Leaf<'a> {
     pub fn leaf_type(&self) -> LeafType {
         use std::mem;
 
-        let lty = self.0.leaf_type.native();
-        assert!(lty >= LeafType::Ordinary as i32 && lty <= LeafType::Sky as i32);
+        let lty = self.0.leaf_type.native() as i8;
+        assert!(lty >= LeafType::Ordinary as i8 && lty <= LeafType::Sky as i8);
         unsafe { mem::transmute(lty) }
     }
 
-    // TODO: Do this without allocating
     pub fn visible_leaves(&self) -> VisibilityIterator {
         let num_leaves = self.1.leaves().len();
         let vis_list = self.1.vislist();
