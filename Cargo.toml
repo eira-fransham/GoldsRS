@@ -1,0 +1,9 @@
+[package]
+name = "libquake-sys"
+version = "0.1.0"
+authors = ["Vurich <jackefransham@hotmail.co.uk>"]
+
+[dependencies]
+ioendian = "*"
+memmap = "*"
+termcolor = "*"
