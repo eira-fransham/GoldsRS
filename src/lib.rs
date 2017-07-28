@@ -59,6 +59,7 @@ mod tests {
         let bsp: Bsp = unsafe { Bsp::new(simple_dm5.as_slice()) };
 
         let map = bsp.map_model();
+        // Root -> Front -> Back -> Front -> Front
         let leaf = map.root()
             .branch()
             .unwrap()

@@ -391,37 +391,31 @@ pub struct VisibilityIterator<'a> {
 impl<'a> Iterator for VisibilityIterator<'a> {
     type Item = Leaf<'a>;
 
-    // TODO: Prevent this from being recursive
     fn next(&mut self) -> Option<Self::Item> {
-        if self.other_index > self.num_leaves {
-            None
-        } else if let Some(bit) = self.bit {
-            if bit.get() >= 8 {
-                self.bit = None;
-                self.index += 1;
-
-                self.next()
-            } else {
-                let other_index = self.other_index;
-                self.other_index += 1;
-
-                let mask = 2 << bit.get();
-                self.bit = NonZero::new(bit.get() + 1);
-                if self.vis_list[self.index] & mask != 0 {
-                    Some(self.bsp.leaf(other_index as _))
+        loop {
+            if self.other_index > self.num_leaves {
+                break None;
+            } else if let Some(bit) = self.bit {
+                if bit.get() >= 8 {
+                    self.bit = None;
+                    self.index += 1;
                 } else {
-                    self.next()
+                    let other_index = self.other_index;
+                    self.other_index += 1;
+
+                    let mask = 2 << bit.get();
+                    self.bit = NonZero::new(bit.get() + 1);
+
+                    if self.vis_list[self.index] & mask != 0 {
+                        break Some(self.bsp.leaf(other_index as _));
+                    }
                 }
+            } else if self.vis_list[self.index] == 0 {
+                self.other_index += 8 * self.vis_list[self.index + 1] as usize;
+                self.index += 2;
+            } else {
+                self.bit = NonZero::new(1u8);
             }
-        } else if self.vis_list[self.index] == 0 {
-            self.other_index += 8 * self.vis_list[self.index + 1] as usize;
-            self.index += 2;
-
-            self.next()
-        } else {
-            self.bit = NonZero::new(1u8);
-
-            self.next()
         }
     }
 }
