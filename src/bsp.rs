@@ -241,6 +241,13 @@ impl<'a> Bsp<'a> {
 
     #[inline(always)]
     unsafe fn slice_ref<'b, T>(&'b self, offset: usize, count: usize) -> &'b [T] {
+        debug_assert!(
+            offset
+                .checked_add(count)
+                .map(|e| e <= self.0.len())
+                .unwrap_or(false)
+        );
+
         slice::from_raw_parts(self.0.as_ptr().offset(offset as _) as _, count)
     }
 
