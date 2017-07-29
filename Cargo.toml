@@ -10,3 +10,6 @@ termcolor = "*"
 
 [dev-dependencies]
 rand = "*"
+
+[features]
+nightly = []

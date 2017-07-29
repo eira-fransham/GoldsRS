@@ -1,15 +1,17 @@
-#![cfg_attr(feature = "nightly", feature(nonzero))]
+#![cfg_attr(feature = "nightly", feature(nonzero, conservative_impl_trait))]
 
 #[cfg(feature = "nightly")]
 extern crate core;
 
 extern crate ioendian;
 
-mod sys;
+pub mod sys;
 pub mod bsp;
 
 #[cfg(test)]
 mod tests {
+    extern crate rand;
+
     use bsp::*;
     use bsp::quake1::*;
 
@@ -17,7 +19,11 @@ mod tests {
     fn print_node<T: MapVersion<Lump = Quake1Lump>>(node: &Node<T>) {
         use std::mem;
 
-        fn print_node_inner<S: MapVersion<Lump = Quake1Lump>>(o_is_front: Option<bool>, prefix: String, node: Option<&Node<S>>) {
+        fn print_node_inner<S: MapVersion<Lump = Quake1Lump>>(
+            o_is_front: Option<bool>,
+            prefix: String,
+            node: Option<&Node<S>>,
+        ) {
             let init = o_is_front
                 .map(|is_front| if is_front { "├─" } else { "└─" })
                 .unwrap_or("");
@@ -53,26 +59,29 @@ mod tests {
     #[test]
     fn quake_dm1() {
         use bsp::mapversions::Quake1;
+        use bsp::quake1::Bounds;
 
-        static DM1: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/DM1.BSP"));
+        fn contains(bounds: &Bounds, pos: &Vec3<i16>) -> bool {
+            bounds.aa.x < pos.x && bounds.aa.y < pos.y && bounds.aa.z < pos.z &&
+                bounds.bb.x > pos.x && bounds.bb.y > pos.y && bounds.bb.z > pos.z
+        }
+
+        static DM1: &[u8] =
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/death.bsp"));
 
         let bsp: Bsp<Quake1> = Bsp::new(DM1).unwrap();
 
         let map = bsp.map_model();
 
-        let leaf = map.root()
-            .unwrap()
-            .branch()
-            .unwrap()
-            .traverse(&Vec3 {
-                x: 20184,
-                y: -12445,
-                z: -21673,
-            })
-            .unwrap();
+        let root = map.root().unwrap().branch().unwrap();
 
-        let bounds_as_array: [[u16; 3]; 2] = unsafe { ::std::mem::transmute(leaf.bounds()) };
+        let pos = Vec3 { x: 2426, y: 879, z: -2517 };
+        let leaf = root.traverse(&pos).unwrap();
 
-        assert_eq!(bounds_as_array, [[544, 536, 0], [672, 800, 218]]);
+        assert!(contains(&leaf.bounds(), &pos));
+
+        let bounds_as_array: [[i16; 3]; 2] = unsafe { ::std::mem::transmute(leaf.bounds()) };
+
+        assert_eq!(bounds_as_array, [[2424, 832, -2544], [2432, 1248, -2352]]);
     }
 }

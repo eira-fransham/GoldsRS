@@ -145,16 +145,21 @@ impl<'a, V: MapVersion<Lump = sys::Quake1Lump>> Branch<'a, V> {
     }
 
     pub fn traverse(&self, position: &Vec3<i16>) -> Option<Leaf<'a, V>> {
-        fn dot(a: &Vec3<f32>, b: &Vec3<i16>) -> f32 {
-            a.x * b.x as f32 + a.y * b.y as f32 + a.z * b.z as f32
+        fn dot(a: &Vec3<f32>, b: &Vec3<f32>) -> f32 {
+            a.x * b.x + a.y * b.y + a.z * b.z
         }
 
         let mut node = Cow::Borrowed(self);
+        let fpos = Vec3 {
+            x: position.x as _,
+            y: position.y as _,
+            z: position.z as _,
+        };
 
         loop {
             let plane = node.plane();
 
-            let o_out = if dot(&plane.normal, position) >= 0. {
+            let o_out = if dot(&plane.normal, &fpos) - plane.distance >= 0. {
                 node.front()
             } else {
                 node.back()
@@ -264,6 +269,7 @@ pub enum Side {
 }
 
 #[repr(u8)]
+#[derive(Debug)]
 pub enum PlaneType {
     AxialX = 0,
     AxialY = 1,
@@ -276,9 +282,10 @@ pub enum PlaneType {
 pub type Bounds = BoundingBox<Vec3<i16>>;
 
 // TODO: Load this lazily from the BSP
+#[derive(Debug)]
 pub struct Plane {
     pub normal: Vec3<f32>,
-    pub dist: f32,
+    pub distance: f32,
     pub plane_type: PlaneType,
 }
 
@@ -301,7 +308,7 @@ impl From<sys::Plane> for Plane {
                 y: other.normal.y.native(),
                 z: other.normal.z.native(),
             },
-            dist: other.dist.native(),
+            distance: other.dist.native(),
             plane_type: unsafe { mem::transmute(plane_type) },
         }
     }
@@ -380,7 +387,7 @@ impl<'a, V: MapVersion<Lump = sys::Quake1Lump> + 'a> Face<'a, V> {
                     y: -out_plane.normal.y,
                     z: -out_plane.normal.z,
                 },
-                dist: -out_plane.dist,
+                distance: -out_plane.distance,
                 ..out_plane
             }
         }
@@ -390,6 +397,12 @@ impl<'a, V: MapVersion<Lump = sys::Quake1Lump> + 'a> Face<'a, V> {
         let start = self.0.ledge_id.native() as usize;
         let end = start + self.0.ledge_len.native() as usize;
         unsafe { ValueIter::new(self.1, &self.1.edge_indices()[start..end]) }
+    }
+
+    #[cfg(feature = "nightly")]
+    pub fn points(&self) -> impl Iterator<Item = Vec3<f32>> {
+        // TODO: Some of these points are probably redundant
+        self.edges().flat_map(|edge| [edge.start(), edge.end()])
     }
 }
 

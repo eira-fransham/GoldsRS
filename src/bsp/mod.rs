@@ -131,7 +131,10 @@ impl<'a, V: MapVersion<Lump = sys::Quake1Lump> + 'a> Bsp<'a, V> {
     }
 
     unsafe fn slice_from_header<'b, T>(&'b self, header: &'b sys::Entry) -> &'b [T] {
-        self.slice_ref(header.offset.native() as _, header.len.native() as _)
+        self.slice_ref(
+            header.offset.native() as _,
+            (header.len.native() as usize) / mem::size_of::<T>(),
+        )
     }
 
     #[inline(always)]
@@ -168,7 +171,7 @@ impl<'a, V: MapVersion<Lump = sys::Quake1Lump> + 'a> Bsp<'a, V> {
     }
 
     fn planes(&self) -> &[sys::Plane] {
-        unsafe { self.slice_from_header(&self.header().lumps.vertices) }
+        unsafe { self.slice_from_header(&self.header().lumps.planes) }
     }
 
     fn models(&self) -> &[sys::Model] {
