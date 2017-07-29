@@ -1,5 +1,5 @@
 [package]
-name = "libquake-sys"
+name = "golds-rs"
 version = "0.1.0"
 authors = ["Vurich <jackefransham@hotmail.co.uk>"]
 
@@ -7,3 +7,6 @@ authors = ["Vurich <jackefransham@hotmail.co.uk>"]
 ioendian = "*"
 memmap = "*"
 termcolor = "*"
+
+[dev-dependencies]
+rand = "*"

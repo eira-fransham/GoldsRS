@@ -1,8 +1,9 @@
-#![feature(nonzero)]
+#![cfg_attr(feature = "nightly", feature(nonzero))]
 
+#[cfg(feature = "nightly")]
 extern crate core;
+
 extern crate ioendian;
-extern crate memmap;
 
 mod sys;
 pub mod bsp;
@@ -10,17 +11,20 @@ pub mod bsp;
 #[cfg(test)]
 mod tests {
     use bsp::*;
+    use bsp::quake1::*;
 
-    fn print_node(node: &Node) {
+    #[allow(dead_code)]
+    fn print_node<T: MapVersion<Lump = Quake1Lump>>(node: &Node<T>) {
         use std::mem;
 
-        fn print_node_inner(o_is_front: Option<bool>, prefix: String, node: &Node) {
-            match *node {
-                Node::Branch(ref inner) => {
+        fn print_node_inner<S: MapVersion<Lump = Quake1Lump>>(o_is_front: Option<bool>, prefix: String, node: Option<&Node<S>>) {
+            let init = o_is_front
+                .map(|is_front| if is_front { "├─" } else { "└─" })
+                .unwrap_or("");
+
+            match node {
+                Some(&Node::Branch(ref inner)) => {
                     let bounds: [[u16; 3]; 2] = unsafe { mem::transmute(inner.bounds()) };
-                    let init = o_is_front
-                        .map(|is_front| if is_front { "├─" } else { "└─" })
-                        .unwrap_or("");
 
                     println!("{}{}{:?}", prefix, init, bounds);
 
@@ -30,54 +34,45 @@ mod tests {
                         prefix + "  "
                     };
 
-                    print_node_inner(Some(true), new_prefix.clone(), &inner.back());
-                    print_node_inner(Some(false), new_prefix, &inner.front());
+                    print_node_inner(Some(true), new_prefix.clone(), inner.back().as_ref());
+                    print_node_inner(Some(false), new_prefix, inner.front().as_ref());
                 }
-                Node::Leaf(ref inner) => {
+                Some(&Node::Leaf(ref inner)) => {
                     let bounds: [[u16; 3]; 2] = unsafe { mem::transmute(inner.bounds()) };
-                    let init = o_is_front
-                        .map(|is_front| if is_front { "├──" } else { "└──" })
-                        .unwrap_or("");
-
-                    println!("{}{}{:?}", prefix, init, bounds);
+                    println!("{}{}{:?} - {:?}", prefix, init, bounds, inner.leaf_type());
+                }
+                None => {
+                    println!("{}{}(none)", prefix, init);
                 }
             }
         }
 
-        print_node_inner(None, Default::default(), &node);
+        print_node_inner(None, Default::default(), Some(&node));
     }
 
     #[test]
-    fn simple_dm5() {
-        use memmap::{Mmap, Protection};
+    fn quake_dm1() {
+        use bsp::mapversions::Quake1;
 
-        let simple_dm5: Mmap = Mmap::open_path(
-            concat!(env!("CARGO_MANIFEST_DIR"), "/assets/DM1.BSP"),
-            Protection::Read,
-        ).expect("Opening BSP failed");
+        static DM1: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/DM1.BSP"));
 
-        let bsp: Bsp = unsafe { Bsp::new(simple_dm5.as_slice()) };
+        let bsp: Bsp<Quake1> = Bsp::new(DM1).unwrap();
 
         let map = bsp.map_model();
-        // Root -> Front -> Back -> Front -> Front
+
         let leaf = map.root()
+            .unwrap()
             .branch()
             .unwrap()
-            .front()
-            .branch()
-            .unwrap()
-            .back()
-            .branch()
-            .unwrap()
-            .front()
-            .branch()
-            .unwrap()
-            .front()
-            .leaf()
+            .traverse(&Vec3 {
+                x: 20184,
+                y: -12445,
+                z: -21673,
+            })
             .unwrap();
 
         let bounds_as_array: [[u16; 3]; 2] = unsafe { ::std::mem::transmute(leaf.bounds()) };
 
-        assert_eq!(bounds_as_array, [[632, 928, 248], [864, 1360, 306]]);
+        assert_eq!(bounds_as_array, [[544, 536, 0], [672, 800, 218]]);
     }
 }

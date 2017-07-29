@@ -27,9 +27,15 @@ pub struct Entry {
 
 #[repr(C)]
 #[derive(Debug, Clone)]
-pub struct Header {
-    // Must be 0x17
-    pub version: LI32,
+pub struct Header<M, L> {
+    pub magic: M,
+    pub version: LU32,
+    pub lumps: L,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct Quake1Lump {
     pub entities: Entry,
     pub planes: Entry,
     pub miptex: Entry,
@@ -41,10 +47,34 @@ pub struct Header {
     pub lightmaps: Entry,
     pub clipnodes: Entry,
     pub leaves: Entry,
-    pub lface: Entry,
+    pub lfaces: Entry,
     pub edges: Entry,
     pub ledges: Entry,
     pub models: Entry,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct Quake2Lump {
+    pub entities: Entry,
+    pub planes: Entry,
+    pub vertices: Entry,
+    pub vislist: Entry,
+    pub nodes: Entry,
+    pub texinfo: Entry,
+    pub faces: Entry,
+    pub lightmaps: Entry,
+    pub leaves: Entry,
+    pub lface: Entry,
+    pub lbrush: Entry,
+    pub edges: Entry,
+    pub ledges: Entry,
+    pub models: Entry,
+    pub brushes: Entry,
+    pub brush_sides: Entry,
+    pub pop: Entry,
+    pub areas: Entry,
+    pub area_portals: Entry,
 }
 
 #[repr(C)]
@@ -173,7 +203,7 @@ pub struct Sounds {
 #[derive(Debug, Clone)]
 pub struct Leaf {
     pub leaf_type: LI32,
-    pub vis_index: LU32,
+    pub vis_index: LI32,
     pub bounds: BBoxShort,
     pub face_index_id: LU16,
     pub face_index_len: LU16,
