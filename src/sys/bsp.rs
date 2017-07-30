@@ -5,6 +5,7 @@
 //! respect the actual C type of the numbers used.
 
 use ioendian::{Little, IntoNativeEndian};
+use std::marker::PhantomData;
 
 type LU8 = Little<u8>;
 type LU16 = Little<u16>;
@@ -18,11 +19,44 @@ pub type Scalar = LF32;
 pub type BBoxV3 = BoundingBox<Scalar3>;
 pub type BBoxShort = BoundingBox<Short3>;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Unimplemented {}
+pub trait UnifiesWith<T> {}
+
+#[cfg(feature = "nightly")]
+impl<T> UnifiesWith<T> for T {}
+#[cfg(feature = "nightly")]
+impl<T> UnifiesWith<T> for Unimplemented {}
+
+#[cfg(not(feature = "nightly"))]
+impl<T> UnifiesWith<T> for T {}
+
 #[repr(C)]
-#[derive(Debug, Clone)]
-pub struct Entry {
+#[derive(Debug)]
+pub struct Entry<T = Unimplemented> {
     pub offset: LI32,
     pub len: LI32,
+    pub output: PhantomData<T>,
+}
+
+impl<T> Clone for Entry<T> {
+    fn clone(&self) -> Self {
+        Entry {
+            offset: self.offset,
+            len: self.len,
+            output: PhantomData,
+        }
+    }
+}
+
+impl<T> Entry<T> {
+    pub fn transmute<U>(self) -> Entry<U> {
+        Entry {
+            offset: self.offset,
+            len: self.len,
+            output: PhantomData,
+        }
+    }
 }
 
 #[repr(C)]
@@ -37,39 +71,39 @@ pub struct Header<M, L> {
 #[derive(Debug, Clone)]
 pub struct Quake1Lump {
     pub entities: Entry,
-    pub planes: Entry,
+    pub planes: Entry<Plane>,
     pub miptex: Entry,
-    pub vertices: Entry,
-    pub vislist: Entry,
-    pub nodes: Entry,
+    pub vertices: Entry<Scalar3>,
+    pub vislist: Entry<u8>,
+    pub nodes: Entry<Node>,
     pub texinfo: Entry,
-    pub faces: Entry,
+    pub faces: Entry<Face>,
     pub lightmaps: Entry,
     pub clipnodes: Entry,
-    pub leaves: Entry,
-    pub lfaces: Entry,
-    pub edges: Entry,
-    pub ledges: Entry,
-    pub models: Entry,
+    pub leaves: Entry<Leaf>,
+    pub lfaces: Entry<LU16>,
+    pub edges: Entry<Edge>,
+    pub ledges: Entry<LI16>,
+    pub models: Entry<Model>,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct Quake2Lump {
     pub entities: Entry,
-    pub planes: Entry,
-    pub vertices: Entry,
-    pub vislist: Entry,
-    pub nodes: Entry,
+    pub planes: Entry<Plane>,
+    pub vertices: Entry<Scalar3>,
+    pub vislist: Entry<u8>,
+    pub nodes: Entry<Node>,
     pub texinfo: Entry,
-    pub faces: Entry,
+    pub faces: Entry<Face>,
     pub lightmaps: Entry,
-    pub leaves: Entry,
-    pub lface: Entry,
+    pub leaves: Entry<Leaf>,
+    pub lface: Entry<LU16>,
     pub lbrush: Entry,
-    pub edges: Entry,
-    pub ledges: Entry,
-    pub models: Entry,
+    pub edges: Entry<Edge>,
+    pub ledges: Entry<LI16>,
+    pub models: Entry<Model>,
     pub brushes: Entry,
     pub brush_sides: Entry,
     pub pop: Entry,

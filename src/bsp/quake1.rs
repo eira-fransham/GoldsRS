@@ -259,9 +259,12 @@ impl<'a, V: 'a> Node<'a, V> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct EdgeRef(Little<u32>);
+pub struct EdgeRef(Little<i16>);
 #[derive(Copy, Clone, Debug)]
 pub struct FaceRef(Little<u16>);
+
+impl sys::UnifiesWith<FaceRef> for Little<u16> {}
+impl sys::UnifiesWith<EdgeRef> for Little<i16> {}
 
 pub enum Side {
     Back,

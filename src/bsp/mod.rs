@@ -7,7 +7,7 @@ use ioendian::IntoNativeEndian;
 
 use sys::bsp as sys;
 
-pub use sys::bsp::{BoundingBox, Vec3, Quake1Lump};
+pub use sys::bsp::{BoundingBox, Vec3, Quake1Lump, UnifiesWith};
 
 pub mod mapversions;
 pub mod quake1;
@@ -98,21 +98,21 @@ impl<'a, V: MapVersion<Lump = sys::Quake1Lump> + 'a> Bsp<'a, V> {
 
             for &(ref entry, ref name) in
                 &[
-                    (&h.lumps.entities, "entities"),
-                    (&h.lumps.planes, "planes"),
-                    (&h.lumps.miptex, "miptex"),
-                    (&h.lumps.vertices, "vertices"),
-                    (&h.lumps.vislist, "vislist"),
-                    (&h.lumps.nodes, "nodes"),
-                    (&h.lumps.texinfo, "texinfo"),
-                    (&h.lumps.faces, "faces"),
-                    (&h.lumps.lightmaps, "lightmaps"),
-                    (&h.lumps.clipnodes, "clipnodes"),
-                    (&h.lumps.leaves, "leaves"),
-                    (&h.lumps.lfaces, "lfaces"),
-                    (&h.lumps.edges, "edges"),
-                    (&h.lumps.ledges, "ledges"),
-                    (&h.lumps.models, "models"),
+                    (&h.lumps.entities.clone().transmute::<sys::Entry>(), "entities"),
+                    (&h.lumps.planes.clone().transmute(), "planes"),
+                    (&h.lumps.miptex.clone().transmute(), "miptex"),
+                    (&h.lumps.vertices.clone().transmute(), "vertices"),
+                    (&h.lumps.vislist.clone().transmute(), "vislist"),
+                    (&h.lumps.nodes.clone().transmute(), "nodes"),
+                    (&h.lumps.texinfo.clone().transmute(), "texinfo"),
+                    (&h.lumps.faces.clone().transmute(), "faces"),
+                    (&h.lumps.lightmaps.clone().transmute(), "lightmaps"),
+                    (&h.lumps.clipnodes.clone().transmute(), "clipnodes"),
+                    (&h.lumps.leaves.clone().transmute(), "leaves"),
+                    (&h.lumps.lfaces.clone().transmute(), "lfaces"),
+                    (&h.lumps.edges.clone().transmute(), "edges"),
+                    (&h.lumps.ledges.clone().transmute(), "ledges"),
+                    (&h.lumps.models.clone().transmute(), "models"),
                 ]
             {
                 if !entry
@@ -130,7 +130,10 @@ impl<'a, V: MapVersion<Lump = sys::Quake1Lump> + 'a> Bsp<'a, V> {
         Ok(unchecked)
     }
 
-    unsafe fn slice_from_header<'b, T>(&'b self, header: &'b sys::Entry) -> &'b [T] {
+    unsafe fn slice_from_header<'b, T, U: UnifiesWith<T>>(
+        &'b self,
+        header: &'b sys::Entry<U>,
+    ) -> &'b [T] {
         self.slice_ref(
             header.offset.native() as _,
             (header.len.native() as usize) / mem::size_of::<T>(),

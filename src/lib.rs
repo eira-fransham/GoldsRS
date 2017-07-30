@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "nightly", feature(nonzero, conservative_impl_trait))]
+#![cfg_attr(feature = "nightly", feature(nonzero, conservative_impl_trait, specialization))]
 
 #[cfg(feature = "nightly")]
 extern crate core;
